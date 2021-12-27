@@ -38,6 +38,8 @@
   },
   "dependencies": {
     "data-uri-to-buffer": "^2.0.0",
-    "source-map": "^0.6.1"
+    "node-fetch": "^3.1.0",
+    "source-map": "^0.6.1",
+    "sync-fetch": "^0.3.1"
   }
 }

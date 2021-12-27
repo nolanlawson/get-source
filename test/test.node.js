@@ -12,7 +12,8 @@ describe ('get-source', () => {
 
     const getSource = require ('../get-source'),
           fs        = require ('fs'),
-          path      = require ('path')
+          path      = require ('path'),
+          url       = require('url')
 
     it ('cache sanity check', () => {
 
@@ -218,5 +219,13 @@ describe ('get-source', () => {
         getSource.resetCache ()
 
         Object.keys (getSource.getCache ()).length.should.equal (0)
+    })
+
+    it ('can fetch urls sync', () => {
+        const uglifiedUrl = url.pathToFileURL(path.join(__dirname, './files/original.uglified.js')).toString()
+        const originalUrl = url.pathToFileURL(path.join(__dirname, './files/original.js')).toString()
+
+        debugger
+        getSource (uglifiedUrl).should.equal(originalUrl)
     })
 })

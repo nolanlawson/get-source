@@ -8,7 +8,9 @@ const { assign }        = Object,
       SyncPromise       = require ('./impl/SyncPromise'),
       path              = require ('./impl/path'),
       dataURIToBuffer   = require ('data-uri-to-buffer'),
-      nodeRequire       = isBrowser ? null : module.require
+      nodeRequire       = isBrowser ? null : module.require,
+      fetch             = isBrowser ? null : require('node-fetch'),
+      syncFetch         = isBrowser ? null : require('sync-fetch')
 
 /*  ------------------------------------------------------------------------ */
 
@@ -21,13 +23,21 @@ const memoize = f => {
     return m
 }
 
+const isUrl = path => /^(https?|file):\/\//.test(path)
+
 function impl (fetchFile, sync) {
     
     const PromiseImpl = sync ? SyncPromise : Promise 
     const SourceFileMemoized = memoize (path => SourceFile (path, fetchFile (path)))
 
     function SourceFile (srcPath, text) {
-        if (text === undefined) return SourceFileMemoized (path.resolve (srcPath))
+        if (text === undefined) {
+            if (isUrl(srcPath)) {
+                return SourceFileMemoized(srcPath)
+            } else {
+                return SourceFileMemoized(path.resolve(srcPath))
+            }
+        }
 
         return PromiseImpl.resolve (text).then (text => {
 
@@ -143,7 +153,12 @@ module.exports = impl (function fetchFileSync (path) {
                                 xhr.send (null)
                                 resolve (xhr.responseText)
                             } else {
-                                resolve (nodeRequire ('fs').readFileSync (path, { encoding: 'utf8' }))
+                                if (isUrl(path)) {
+                                    debugger
+                                    resolve(syncFetch(path).text())
+                                } else { // filepath
+                                    resolve (nodeRequire ('fs').readFileSync (path, { encoding: 'utf8' }))
+                                }
                             }
                         })
                     }, true)
@@ -166,9 +181,13 @@ module.exports.async = impl (function fetchFileAsync (path) {
                                 }
                                 xhr.send (null)
                             } else {
-                                nodeRequire ('fs').readFile (path, { encoding: 'utf8' }, (e, x) => {
-                                    e ? reject (e) : resolve (x)
-                                })
+                                if (isUrl(path)) {
+                                    fetch(path).then(_ => _.text()).then(reject, resolve)
+                                } else { // filepath
+                                    nodeRequire ('fs').readFile (path, { encoding: 'utf8' }, (e, x) => {
+                                        e ? reject (e) : resolve (x)
+                                    })
+                                }
                             }
                         })
                     })

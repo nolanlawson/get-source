@@ -34,12 +34,13 @@
     "memory-fs": "^0.3.0",
     "mocha": "^8.0.1",
     "nyc": "^15.1.0",
+    "serve": "^13.0.2",
     "webpack": "^4.43.0"
   },
   "dependencies": {
     "data-uri-to-buffer": "^2.0.0",
-    "node-fetch": "^3.1.0",
+    "request": "^2.88.2",
     "source-map": "^0.6.1",
-    "sync-fetch": "^0.3.1"
+    "sync-request": "^6.1.0"
   }
 }

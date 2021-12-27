@@ -4,6 +4,8 @@
           didn't work for selenium tests (not reloading them)...
           ------------------------------------------------------------------ */
                     
+const getSource = require('../get-source');
+const path = require('path');
 require ('chai').should ()
 
 /*  ------------------------------------------------------------------------ */
@@ -13,7 +15,9 @@ describe ('get-source', () => {
     const getSource = require ('../get-source'),
           fs        = require ('fs'),
           path      = require ('path'),
-          url       = require('url')
+          url       = require('url'),
+          http      = require('http'),
+          spawn     = require('child_process').spawn
 
     it ('cache sanity check', () => {
 
@@ -221,11 +225,36 @@ describe ('get-source', () => {
         Object.keys (getSource.getCache ()).length.should.equal (0)
     })
 
-    it ('can fetch urls sync', () => {
-        const uglifiedUrl = url.pathToFileURL(path.join(__dirname, './files/original.uglified.js')).toString()
-        const originalUrl = url.pathToFileURL(path.join(__dirname, './files/original.js')).toString()
+    describe('http tests', () => {
 
-        debugger
-        getSource (uglifiedUrl).should.equal(originalUrl)
+        let child
+
+        beforeEach(() => {
+            child = spawn(path.resolve(__dirname, '../node_modules/.bin/serve'), [], {
+                cwd: path.resolve(__dirname, './files')
+            })
+        })
+
+        afterEach(() => {
+            child.kill()
+        })
+
+        it('reads http sources (sourcemapped, with external links)', () => {
+            const uglified = getSource ('http://localhost:3000/original.uglified.js')
+
+            uglified.path.should.equal (path.resolve ('http://localhost:3000/original.uglified.js'))
+            uglified.lines.should.deep.equal ([
+                'function hello(){return"hello world"}',
+                '//# sourceMappingURL=original.uglified.js.map',
+                ''
+            ])
+
+            const resolved = uglified.resolve ({ line: 1, column: 18 }) // should be tolerant to column omission
+
+            resolved.line.should.equal (4)
+            resolved.column.should.equal (2)
+            resolved.sourceFile.should.equal (getSource ('http://localhost:3000/original.js'))
+            resolved.sourceLine.should.equal ('\treturn \'hello world\' }')
+        })
     })
 })

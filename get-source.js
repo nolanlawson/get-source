@@ -9,8 +9,8 @@ const { assign }        = Object,
       path              = require ('./impl/path'),
       dataURIToBuffer   = require ('data-uri-to-buffer'),
       nodeRequire       = isBrowser ? null : module.require,
-      fetch             = isBrowser ? null : require('node-fetch'),
-      syncFetch         = isBrowser ? null : require('sync-fetch')
+      request           = isBrowser ? null : require('request'),
+      syncRequest       = isBrowser ? null : require('sync-request')
 
 /*  ------------------------------------------------------------------------ */
 
@@ -23,7 +23,7 @@ const memoize = f => {
     return m
 }
 
-const isUrl = path => /^(https?|file):\/\//.test(path)
+const isUrl = path => /^https?:\/\//.test(path)
 
 function impl (fetchFile, sync) {
     
@@ -89,7 +89,7 @@ function impl (fetchFile, sync) {
     }
 
     function SourceMapResolver (originalFilePath, sourceMapPath, fallbackResolve) {
-    
+
         const srcFile = sourceMapPath.startsWith ('data:')
                             ? SourceFile (originalFilePath, dataURIToBuffer (sourceMapPath).toString ())
                             : SourceFile (path.relativeToFile (originalFilePath, sourceMapPath))
@@ -154,8 +154,7 @@ module.exports = impl (function fetchFileSync (path) {
                                 resolve (xhr.responseText)
                             } else {
                                 if (isUrl(path)) {
-                                    debugger
-                                    resolve(syncFetch(path).text())
+                                    resolve(syncRequest('GET', path).getBody('utf8'))
                                 } else { // filepath
                                     resolve (nodeRequire ('fs').readFileSync (path, { encoding: 'utf8' }))
                                 }
@@ -182,7 +181,9 @@ module.exports.async = impl (function fetchFileAsync (path) {
                                 xhr.send (null)
                             } else {
                                 if (isUrl(path)) {
-                                    fetch(path).then(_ => _.text()).then(reject, resolve)
+                                    request(path, (e, x) => {
+                                        e ? reject(e) : resolve(x.getBody('utf8'))
+                                    })
                                 } else { // filepath
                                     nodeRequire ('fs').readFile (path, { encoding: 'utf8' }, (e, x) => {
                                         e ? reject (e) : resolve (x)
